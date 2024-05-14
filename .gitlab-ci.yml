@@ -1,0 +1,37 @@
+image: repository.cartelsol.info/mosdon/yocto/mosdon-x86:latest
+
+stages:
+  - download
+  - build
+  - scan
+
+download:sonar:
+  stage: download
+  script:
+    - apt install unzip -y
+    - mkdir -p .sonar
+    - curl -sSLo build-wrapper-linux-x86.zip $SONAR_HOST_URL/static/cpp/build-wrapper-linux-x86.zip
+    - unzip -o build-wrapper-linux-x86.zip -d .sonar
+    - curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
+    - unzip -o sonar-scanner.zip -d .sonar
+  artifacts:
+    expire_in: 20 min
+    paths:
+      - .sonar/
+
+build:host:
+  stage: build
+  script:
+    - .sonar/build-wrapper-linux-x86/build-wrapper-linux-x86-64 --out-dir .sonar/bw-output ./build.sh
+  artifacts:
+    expire_in: 20 min
+    paths:
+      - build/
+      - .sonar/
+
+sonarqube:check:
+  stage: scan
+  script: 
+    - ls -la
+    - .sonar/sonar-scanner-5.0.1.3006-linux/bin/sonar-scanner -Dsonar.cfamily.build-wrapper-output=.sonar/bw-output
+  allow_failure: true
